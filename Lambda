@@ -1,0 +1,32 @@
+import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
+
+const client = new DynamoDBClient({ region: "eu-west-1" });
+
+export const handler = async (event) => {
+  const tableName = "visitorCounter";
+
+  const updateParams = {
+    TableName: tableName,
+    Key: { id: { S: "visitor_count" } },
+    UpdateExpression: "SET #count = if_not_exists(#count, :zero) + :increment",
+    ExpressionAttributeNames: {
+      "#count": "count"
+    },
+    ExpressionAttributeValues: {
+      ":increment": { N: "1" },
+      ":zero": { N: "0" }
+    },
+    ReturnValues: "UPDATED_NEW"
+  };
+
+  const updateCommand = new UpdateItemCommand(updateParams);
+  const response = await client.send(updateCommand);
+
+  const newCount = parseInt(response.Attributes.count.N);
+
+  return {
+    statusCode: 200,
+    headers: { "Access-Control-Allow-Origin": "*" },
+    body: JSON.stringify({ count: newCount }),
+  };
+};
